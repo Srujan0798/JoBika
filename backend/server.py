@@ -13,6 +13,7 @@ import json
 from werkzeug.utils import secure_filename
 import re
 import sys
+import traceback
 
 print("🚀 Server module loading...")
 
@@ -163,6 +164,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Database Configuration
 def get_db_connection():
     database_url = os.environ.get('DATABASE_URL')
+    
     if database_url and database_url.startswith('postgres'):
         # Use PostgreSQL (Supabase/Render)
         try:
@@ -170,11 +172,15 @@ def get_db_connection():
             from psycopg2.extras import RealDictCursor
             conn = psycopg2.connect(database_url, sslmode='require')
             return conn, 'postgres'
-        except ImportError:
-            print("psycopg2 not installed, falling back to SQLite")
-            pass
+        except Exception as e:
+            print(f"❌ Postgres Connection Error: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+            # Do NOT fall back to SQLite if Postgres is configured but fails
+            # This helps debugging
+            raise e
     
     # Use SQLite (Local)
+    print("⚠️ Using SQLite (DATABASE_URL not set or not postgres)")
     conn = sqlite3.connect('jobika.db')
     conn.row_factory = sqlite3.Row
     return conn, 'sqlite'
