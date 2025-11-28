@@ -4,6 +4,7 @@
 import re
 from typing import Dict, List, Set
 import json
+from database import get_db_connection, get_placeholder
 
 class ResumeCustomizer:
     """
@@ -14,15 +15,27 @@ class ResumeCustomizer:
         self.skill_keywords = self._load_skill_keywords()
     
     def _load_skill_keywords(self) -> Dict[str, List[str]]:
-        """Load skill keywords for different domains"""
-        return {
-            'full_stack': ['react', 'node.js', 'javascript', 'typescript', 'mongodb', 'express', 'vue', 'angular'],
-            'backend': ['python', 'java', 'spring boot', 'django', 'flask', 'microservices', 'rest api', 'graphql'],
-            'frontend': ['react', 'vue', 'angular', 'html', 'css', 'javascript', 'typescript', 'tailwind'],
-            'ai_ml': ['python', 'tensorflow', 'pytorch', 'machine learning', 'deep learning', 'nlp', 'computer vision'],
-            'data': ['python', 'sql', 'pandas', 'numpy', 'data analysis', 'tableau', 'power bi', 'spark'],
-            'devops': ['docker', 'kubernetes', 'aws', 'azure', 'ci/cd', 'jenkins', 'terraform', 'ansible'],
-            'mobile': ['react native', 'flutter', 'android', 'ios', 'swift', 'kotlin', 'java']
+        """Load skill keywords from database"""
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT domain_name, skills_list FROM domain_skills')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        skill_keywords = {}
+        for row in rows:
+            domain = row['domain_name'] if isinstance(row, dict) else row[0]
+            skills_json = row['skills_list'] if isinstance(row, dict) else row[1]
+            try:
+                skill_keywords[domain] = json.loads(skills_json)
+            except:
+                skill_keywords[domain] = []
+        
+        return skill_keywords if skill_keywords else {
+            'full_stack': ['react', 'node.js', 'javascript'],
+            'backend': ['python', 'java', 'django'],
+            'frontend': ['react', 'vue', 'angular']
         }
     
     def customize_resume_for_job(self, base_resume: Dict, job_description: str, job_title: str) -> Dict:

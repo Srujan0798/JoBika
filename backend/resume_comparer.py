@@ -4,20 +4,15 @@ Compare different versions of resumes
 """
 
 import difflib
+import json
 from datetime import datetime
+from database import get_db_connection, get_placeholder
 
 class ResumeComparer:
     """Compare resume versions"""
     
-    def __init__(self, db_path='jobika.db'):
-        self.db_path = db_path
-    
-    def get_db(self):
-        """Get database connection"""
-        import sqlite3
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+    def __init__(self):
+        pass
     
     def compare_versions(self, version_id_1, version_id_2):
         """
@@ -26,15 +21,16 @@ class ResumeComparer:
         Returns:
             dict with differences and statistics
         """
-        conn = self.get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
         try:
             # Get both versions
-            cursor.execute('SELECT * FROM resume_versions WHERE id = ?', (version_id_1,))
+            cursor.execute(f'SELECT * FROM resume_versions WHERE id = {P}', (version_id_1,))
             version1 = cursor.fetchone()
             
-            cursor.execute('SELECT * FROM resume_versions WHERE id = ?', (version_id_2,))
+            cursor.execute(f'SELECT * FROM resume_versions WHERE id = {P}', (version_id_2,))
             version2 = cursor.fetchone()
             
             if not version1 or not version2:
@@ -48,38 +44,34 @@ class ResumeComparer:
             diff = self._get_text_diff(content1, content2)
             
             # Compare metadata
-            import json
-            skills1 = set(json.loads(version1['skills_added'] or '[]'))
-            skills2 = set(json.loads(version2['skills_added'] or '[]'))
+            skills1 = set(json.loads(version1['skills'] or '[]')) # Note: schema uses 'skills' not 'skills_added'
+            skills2 = set(json.loads(version2['skills'] or '[]'))
             
-            keywords1 = set(json.loads(version1['keywords_optimized'] or '[]'))
-            keywords2 = set(json.loads(version2['keywords_optimized'] or '[]'))
+            # Assuming keywords are part of content or stored elsewhere, but schema only has content/skills
+            # We'll skip keywords for now if not in schema, or assume they are in skills
             
             result = {
                 'version1': {
                     'id': version1['id'],
-                    'job_title': version1['job_title'],
+                    'version_name': version1['version_name'], # Schema uses version_name
                     'created_at': version1['created_at'],
                     'match_score': version1['match_score']
                 },
                 'version2': {
                     'id': version2['id'],
-                    'job_title': version2['job_title'],
+                    'version_name': version2['version_name'],
                     'created_at': version2['created_at'],
                     'match_score': version2['match_score']
                 },
                 'differences': {
                     'text_diff': diff,
                     'skills_added': list(skills2 - skills1),
-                    'skills_removed': list(skills1 - skills2),
-                    'keywords_added': list(keywords2 - keywords1),
-                    'keywords_removed': list(keywords1 - keywords2)
+                    'skills_removed': list(skills1 - skills2)
                 },
                 'statistics': {
                     'similarity_percentage': self._calculate_similarity(content1, content2),
                     'length_change': len(content2) - len(content1),
-                    'skills_change': len(skills2) - len(skills1),
-                    'keywords_change': len(keywords2) - len(keywords1)
+                    'skills_change': len(skills2) - len(skills1)
                 }
             }
             
@@ -115,17 +107,18 @@ class ResumeComparer:
     
     def get_version_history(self, user_id, limit=10):
         """Get resume version history for user"""
-        conn = self.get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
         try:
-            cursor.execute('''
-                SELECT id, job_title, match_score, created_at
+            cursor.execute(f'''
+                SELECT id, version_name, match_score, created_at
                 FROM resume_versions
-                WHERE user_id = ?
+                WHERE user_id = {P}
                 ORDER BY created_at DESC
-                LIMIT ?
-            ''', (user_id, limit))
+                LIMIT {limit}
+            ''', (user_id,))
             
             versions = [dict(row) for row in cursor.fetchall()]
             return versions

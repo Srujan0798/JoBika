@@ -5,28 +5,22 @@ Email notifications for new matching jobs
 
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
-import sqlite3
 import json
+from database import get_db_connection, get_placeholder
 
 class JobAlertsSystem:
     """Automated job alerts via email"""
     
-    def __init__(self, db_path='jobika.db'):
-        self.db_path = db_path
+    def __init__(self):
         self.scheduler = None
-    
-    def get_db(self):
-        """Get database connection"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
     
     def check_and_send_alerts(self):
         """Check for new jobs and send alerts to matching users"""
         print(f"🔔 Running job alerts check at {datetime.now()}")
         
-        conn = self.get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
         try:
             # Get all users with preferences enabled
@@ -43,9 +37,9 @@ class JobAlertsSystem:
             
             # Get jobs from last 24 hours
             yesterday = (datetime.now() - timedelta(days=1)).isoformat()
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT * FROM jobs
-                WHERE created_at >= ?
+                WHERE created_at >= {P}
                 ORDER BY created_at DESC
             ''', (yesterday,))
             
@@ -122,7 +116,7 @@ class JobAlertsSystem:
                     'title': job['title'],
                     'company': job['company'],
                     'location': job['location'],
-                    'url': job['url']
+                    'url': job.get('url', '#') # Handle missing URL
                 })
             
             send_job_alert(
@@ -151,13 +145,6 @@ class JobAlertsSystem:
             minute=0
         )
         
-        # For testing: also run every hour
-        # self.scheduler.add_job(
-        #     self.check_and_send_alerts,
-        #     'interval',
-        #     hours=1
-        # )
-        
         self.scheduler.start()
         print("✅ Job alerts scheduler started (runs at 8 AM and 6 PM daily)")
     
@@ -170,16 +157,17 @@ class JobAlertsSystem:
     
     def send_manual_alert(self, user_id):
         """Manually trigger alert for a specific user"""
-        conn = self.get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
         try:
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT u.id, u.email, u.full_name, p.auto_apply_enabled,
                        p.preferred_locations, p.min_salary, p.preferred_roles
                 FROM users u
                 LEFT JOIN user_preferences p ON u.id = p.user_id
-                WHERE u.id = ?
+                WHERE u.id = {P}
             ''', (user_id,))
             
             user = cursor.fetchone()
@@ -189,9 +177,9 @@ class JobAlertsSystem:
             
             # Get recent jobs
             week_ago = (datetime.now() - timedelta(days=7)).isoformat()
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT * FROM jobs
-                WHERE created_at >= ?
+                WHERE created_at >= {P}
                 ORDER BY created_at DESC
             ''', (week_ago,))
             

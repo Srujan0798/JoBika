@@ -544,6 +544,22 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="card"
+                                style="padding: 1rem; margin-top: 2rem; background: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="font-size: 1.25rem; font-weight: 600;">Job Alerts</h3>
+                                    <span
+                                        style="background: #dcfce7; color: #166534; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500;"
+                                        id="alertsStatus">Active</span>
+                                </div>
+                                <p style="color: var(--gray-600); font-size: 0.875rem; margin-bottom: 1rem;">
+                                    You will receive email notifications for new jobs matching your preferences.
+                                </p>
+                                <button class="btn btn-secondary" onclick="testJobAlertUI()" style="width: 100%;">Send
+                                    Test Alert Now</button>
+                            </div>
                         </div>
                     </main>
 
@@ -608,6 +624,27 @@
                             if (confirm('Are you sure you want to logout?')) {
                                 localStorage.clear();
                                 window.location.href = 'index.html';
+                            }
+                        }
+
+                        async function testJobAlertUI() {
+                            const btn = event.target;
+                            const originalText = btn.textContent;
+                            btn.disabled = true;
+                            btn.textContent = 'Sending...';
+
+                            try {
+                                const result = await window.JoBikaAPI.testJobAlert();
+                                if (result.success) {
+                                    alert(`Alert sent! ${result.jobs_sent} jobs found.`);
+                                } else {
+                                    alert('Alert check complete: ' + (result.message || result.error));
+                                }
+                            } catch (error) {
+                                alert('Failed to send alert: ' + error.message);
+                            } finally {
+                                btn.textContent = originalText;
+                                btn.disabled = false;
                             }
                         }
 

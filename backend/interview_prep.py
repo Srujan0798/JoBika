@@ -5,64 +5,37 @@ AI-powered interview tips based on job and resume
 
 import json
 import random
+from database import get_db_connection, get_placeholder
 
 class InterviewPrepSystem:
     """Generate interview preparation tips"""
     
     def __init__(self):
-        self.question_templates = {
-            'technical': [
-                "Explain your experience with {skill}",
-                "How would you approach a problem involving {skill}?",
-                "What is your proficiency level with {skill}?",
-                "Can you walk me through a project where you used {skill}?",
-                "What are the pros and cons of {skill} compared to alternatives?"
-            ],
-            'behavioral': [
-                "Tell me about a time when you faced a challenging project",
-                "How do you handle tight deadlines?",
-                "Describe a situation where you had to work with a difficult team member",
-                "What is your greatest professional achievement?",
-                "How do you stay updated with industry trends?",
-                "Describe a failure and what you learned from it"
-            ],
-            'company': [
-                "Why do you want to work at {company}?",
-                "What do you know about {company}'s products/services?",
-                "How do you align with {company}'s values?",
-                "Where do you see yourself in 5 years at {company}?"
-            ],
-            'role_specific': [
-                "Why are you interested in the {role} position?",
-                "What makes you a good fit for {role}?",
-                "What challenges do you anticipate in this {role}?",
-                "How would you contribute to our team as a {role}?"
-            ]
-        }
+        pass  # No more hardcoded data
+    
+    def _get_questions_by_category(self, category):
+        """Get interview questions from database by category"""
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
-        self.tips = {
-            'preparation': [
-                "Research the company thoroughly before the interview",
-                "Practice your answers using the STAR method (Situation, Task, Action, Result)",
-                "Prepare questions to ask the interviewer",
-                "Review your resume and be ready to discuss each point",
-                "Test your tech setup if it's a virtual interview"
-            ],
-            'during': [
-                "Arrive 10-15 minutes early (or join virtual meeting early)",
-                "Make eye contact and show enthusiasm",
-                "Listen carefully to questions before answering",
-                "Use specific examples from your experience",
-                "It's okay to ask for clarification if you don't understand a question"
-            ],
-            'after': [
-                "Send a thank-you email within 24 hours",
-                "Reflect on questions you found challenging",
-                "Follow up on any action items mentioned",
-                "Stay patient while waiting for a response",
-                "Keep applying to other positions meanwhile"
-            ]
-        }
+        cursor.execute(f'SELECT question_template, tip FROM interview_questions WHERE category = {P}', (category,))
+        questions = cursor.fetchall()
+        conn.close()
+        
+        return questions
+    
+    def _get_tips_by_stage(self, stage):
+        """Get interview tips from database by stage"""
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        P = get_placeholder(db_type)
+        
+        cursor.execute(f'SELECT tip_text FROM interview_tips WHERE stage = {P}', (stage,))
+        tips = cursor.fetchall()
+        conn.close()
+        
+        return [t['tip_text'] if isinstance(t, dict) else t[0] for t in tips]
     
     def generate_prep_guide(self, job_data, user_skills):
         """
@@ -90,11 +63,15 @@ class InterviewPrepSystem:
             job_title, company, matching_skills, missing_skills
         )
         
-        # Select tips
+        # Get tips from database
+        prep_tips = self._get_tips_by_stage('preparation')
+        during_tips = self._get_tips_by_stage('during')
+        after_tips = self._get_tips_by_stage('after')
+        
         tips = {
-            'preparation': random.sample(self.tips['preparation'], min(3, len(self.tips['preparation']))),
-            'during': random.sample(self.tips['during'], min(3, len(self.tips['during']))),
-            'after': random.sample(self.tips['after'], min(3, len(self.tips['after'])))
+            'preparation': random.sample(prep_tips, min(3, len(prep_tips))) if prep_tips else [],
+            'during': random.sample(during_tips, min(3, len(during_tips))) if during_tips else [],
+            'after': random.sample(after_tips, min(3, len(after_tips))) if after_tips else []
         }
         
         # Areas to focus
@@ -131,17 +108,21 @@ class InterviewPrepSystem:
         }
     
     def _generate_questions(self, job_title, company, matching_skills, missing_skills):
-        """Generate likely interview questions"""
+        """Generate likely interview questions from database"""
         questions = []
         
         # Technical questions based on matching skills
+        tech_questions = self._get_questions_by_category('technical')
         for skill in matching_skills[:5]:
-            template = random.choice(self.question_templates['technical'])
-            questions.append({
-                'type': 'technical',
-                'question': template.format(skill=skill.title()),
-                'tip': f"Prepare a specific example of using {skill.title()} in a project"
-            })
+            if tech_questions:
+                q = random.choice(tech_questions)
+                template = q['question_template'] if isinstance(q, dict) else q[0]
+                tip = q['tip'] if isinstance(q, dict) else q[1]
+                questions.append({
+                    'type': 'technical',
+                    'question': template.format(skill=skill.title()),
+                    'tip': tip or f"Prepare a specific example of using {skill.title()} in a project"
+                })
         
         # Questions about missing skills
         for skill in missing_skills[:2]:
@@ -152,27 +133,36 @@ class InterviewPrepSystem:
             })
         
         # Behavioral questions
-        for question in random.sample(self.question_templates['behavioral'], 3):
+        behavioral_questions = self._get_questions_by_category('behavioral')
+        for q in random.sample(behavioral_questions, min(3, len(behavioral_questions))):
+            template = q['question_template'] if isinstance(q, dict) else q[0]
+            tip = q['tip'] if isinstance(q, dict) else q[1]
             questions.append({
                 'type': 'behavioral',
-                'question': question,
-                'tip': "Use the STAR method (Situation, Task, Action, Result)"
+                'question': template,
+                'tip': tip or "Use the STAR method (Situation, Task, Action, Result)"
             })
         
         # Company-specific questions
-        for template in random.sample(self.question_templates['company'], 2):
+        company_questions = self._get_questions_by_category('company')
+        for q in random.sample(company_questions, min(2, len(company_questions))):
+            template = q['question_template'] if isinstance(q, dict) else q[0]
+            tip = q['tip'] if isinstance(q, dict) else q[1]
             questions.append({
                 'type': 'company',
                 'question': template.format(company=company),
-                'tip': f"Research {company}'s mission, values, and recent news"
+                'tip': tip or f"Research {company}'s mission, values, and recent news"
             })
         
         # Role-specific questions
-        for template in random.sample(self.question_templates['role_specific'], 2):
+        role_questions = self._get_questions_by_category('role_specific')
+        for q in random.sample(role_questions, min(2, len(role_questions))):
+            template = q['question_template'] if isinstance(q, dict) else q[0]
+            tip = q['tip'] if isinstance(q, dict) else q[1]
             questions.append({
                 'type': 'role',
                 'question': template.format(role=job_title),
-                'tip': "Connect your experience to the job requirements"
+                'tip': tip or "Connect your experience to the job requirements"
             })
         
         return questions
@@ -187,7 +177,8 @@ def init_interview_prep_endpoints(app):
     @app.route('/api/interview/prep', methods=['POST'])
     def get_interview_prep():
         """Get interview preparation guide"""
-        from server import verify_token, get_db
+        from server import verify_token
+        from database import get_db_connection, get_placeholder
         
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         user_id = verify_token(token)
@@ -202,10 +193,11 @@ def init_interview_prep_endpoints(app):
             return jsonify({'error': 'Job ID required'}), 400
         
         # Get job data
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
-        cursor.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
+        cursor.execute(f'SELECT * FROM jobs WHERE id = {P}', (job_id,))
         job = cursor.fetchone()
         
         if not job:
@@ -213,9 +205,9 @@ def init_interview_prep_endpoints(app):
             return jsonify({'error': 'Job not found'}), 404
         
         # Get user's latest resume
-        cursor.execute('''
+        cursor.execute(f'''
             SELECT skills FROM resumes
-            WHERE user_id = ?
+            WHERE user_id = {P}
             ORDER BY created_at DESC
             LIMIT 1
         ''', (user_id,))

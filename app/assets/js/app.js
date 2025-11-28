@@ -226,14 +226,44 @@ async function loadApplications() {
 
 async function loadAnalytics() {
     try {
-        const data = await apiCall('/analytics');
+        // Fetch data from multiple analytics endpoints
+        const [overview, timeline, skills] = await Promise.all([
+            apiCall('/analytics/overview'),
+            apiCall('/analytics/timeline?days=30'),
+            apiCall('/analytics/skills?limit=5')
+        ]);
+
+        // Transform to format expected by renderAnalytics
+        const data = {
+            userStats: {
+                total: overview.total_applications || 0,
+                breakdown: {
+                    interview: overview.interviews || 0,
+                    offer: overview.offers || 0
+                },
+                timeline: {
+                    dates: timeline.map(t => t.date),
+                    counts: timeline.map(t => t.count)
+                }
+            },
+            marketInsights: {
+                top_skills: skills.map(s => ({ name: s.skill, count: s.count }))
+            }
+        };
+
         renderAnalytics(data);
         return data;
     } catch (error) {
         console.error('Failed to load analytics:', error);
         // Fallback UI
-        document.getElementById('analytics-chart').innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400">No data available</div>';
-        document.getElementById('market-insights').innerHTML = '<div class="w-full text-center text-gray-400">No insights available</div>';
+        const chartContainer = document.getElementById('analytics-chart');
+        if (chartContainer) {
+            chartContainer.innerHTML = '<div class="w-full h-full flex items-center justify-center text-gray-400">No data available</div>';
+        }
+        const insightsContainer = document.getElementById('market-insights');
+        if (insightsContainer) {
+            insightsContainer.innerHTML = '<div class="w-full text-center text-gray-400">No insights available</div>';
+        }
     }
 }
 
@@ -589,6 +619,123 @@ async function enhanceResumeSection(text, sectionType) {
     }
 }
 
+// Enhanced Features Functions
+
+// Cover Letter
+async function generateCoverLetter(jobId, style = 'professional') {
+    try {
+        return await apiCall('/cover-letter/generate', {
+            method: 'POST',
+            body: JSON.stringify({ jobId, style })
+        });
+    } catch (error) {
+        console.error('Failed to generate cover letter:', error);
+        throw error;
+    }
+}
+
+async function getCoverLetterStyles() {
+    try {
+        const data = await apiCall('/cover-letter/styles');
+        return data.styles;
+    } catch (error) {
+        console.error('Failed to get styles:', error);
+        return [];
+    }
+}
+
+// Interview Prep
+async function getInterviewPrep(jobId) {
+    try {
+        return await apiCall('/interview/prep', {
+            method: 'POST',
+            body: JSON.stringify({ jobId })
+        });
+    } catch (error) {
+        console.error('Failed to get interview prep:', error);
+        throw error;
+    }
+}
+
+// Job Alerts
+async function testJobAlert() {
+    try {
+        return await apiCall('/alerts/test', { method: 'POST' });
+    } catch (error) {
+        console.error('Failed to send test alert:', error);
+        throw error;
+    }
+}
+
+async function getAlertsStatus() {
+    try {
+        return await apiCall('/alerts/status');
+    } catch (error) {
+        console.error('Failed to get alerts status:', error);
+        return { enabled: false };
+    }
+}
+
 // Update AppState to include savedJobs
 AppState.savedJobs = [];
+
+// Resume Comparison
+async function getResumeHistory(limit = 10) {
+    try {
+        return await apiCall(`/resume/versions/history?limit=${limit}`);
+    } catch (error) {
+        console.error('Failed to get resume history:', error);
+        return [];
+    }
+}
+
+async function compareResumes(versionId1, versionId2) {
+    try {
+        return await apiCall('/resume/versions/compare', {
+            method: 'POST',
+            body: JSON.stringify({ versionId1, versionId2 })
+        });
+    } catch (error) {
+        console.error('Failed to compare resumes:', error);
+        throw error;
+    }
+}
+
+// Salary Insights
+async function getSalaryInsights(jobTitle, location, experienceYears) {
+    try {
+        return await apiCall('/salary/insights', {
+            method: 'POST',
+            body: JSON.stringify({ jobTitle, location, experienceYears })
+        });
+    } catch (error) {
+        console.error('Failed to get salary insights:', error);
+        throw error;
+    }
+}
+
+async function customizeResume(jobId) {
+    try {
+        return await apiCall('/resume/customize', {
+            method: 'POST',
+            body: JSON.stringify({ jobId })
+        });
+    } catch (error) {
+        console.error('Failed to customize resume:', error);
+        throw error;
+    }
+}
+
+// Export enhanced functions
+Object.assign(window.JoBikaAPI, {
+    generateCoverLetter,
+    getCoverLetterStyles,
+    getInterviewPrep,
+    testJobAlert,
+    getAlertsStatus,
+    getResumeHistory,
+    compareResumes,
+    getSalaryInsights,
+    customizeResume
+});
 

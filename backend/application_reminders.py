@@ -5,43 +5,43 @@ Send reminders for pending applications
 
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
-import sqlite3
+from database import get_db_connection, get_placeholder
 
 class ApplicationReminderSystem:
     """Automated application reminders"""
     
-    def __init__(self, db_path='jobika.db'):
-        self.db_path = db_path
+    def __init__(self):
         self.scheduler = None
-    
-    def get_db(self):
-        """Get database connection"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
     
     def check_and_send_reminders(self):
         """Check for applications needing reminders"""
         print(f"🔔 Checking application reminders at {datetime.now()}")
         
-        conn = self.get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
         try:
             # Applications with no response after 7 days
             week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+            two_weeks_ago = (datetime.now() - timedelta(days=14)).isoformat()
             
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT a.*, u.email, u.full_name, j.title as job_title, j.company
                 FROM applications a
                 JOIN users u ON a.user_id = u.id
                 JOIN jobs j ON a.job_id = j.id
                 WHERE a.status = 'applied'
-                AND a.applied_date <= ?
-                AND a.applied_date >= ?
-            ''', (week_ago, (datetime.now() - timedelta(days=14)).isoformat()))
+                AND a.applied_date <= {P}
+                AND a.applied_date >= {P}
+            ''', (week_ago, two_weeks_ago))
             
-            applications = cursor.fetchall()
+            # Handle RealDictCursor vs standard
+            if db_type == 'postgres':
+                applications = cursor.fetchall()
+            else:
+                columns = [col[0] for col in cursor.description]
+                applications = [dict(zip(columns, row)) for row in cursor.fetchall()]
             
             print(f"📧 Found {len(applications)} applications needing follow-up")
             
@@ -49,18 +49,20 @@ class ApplicationReminderSystem:
                 self._send_reminder_email(app)
             
             # Applications in interview stage for >14 days
-            two_weeks_ago = (datetime.now() - timedelta(days=14)).isoformat()
-            
-            cursor.execute('''
+            cursor.execute(f'''
                 SELECT a.*, u.email, u.full_name, j.title as job_title, j.company
                 FROM applications a
                 JOIN users u ON a.user_id = u.id
                 JOIN jobs j ON a.job_id = j.id
                 WHERE a.status = 'interview'
-                AND a.applied_date <= ?
+                AND a.applied_date <= {P}
             ''', (two_weeks_ago,))
             
-            interview_apps = cursor.fetchall()
+            if db_type == 'postgres':
+                interview_apps = cursor.fetchall()
+            else:
+                columns = [col[0] for col in cursor.description]
+                interview_apps = [dict(zip(columns, row)) for row in cursor.fetchall()]
             
             for app in interview_apps:
                 self._send_interview_reminder(app)

@@ -516,7 +516,11 @@
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
                         <button class="btn btn-primary" onclick="event.stopPropagation(); quickApply(${job.id})">Quick Apply</button>
-                        <button class="btn btn-secondary" onclick="event.stopPropagation(); saveJob(${job.id})">Save for Later</button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); saveJob(${job.id})">Save</button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); generateCoverLetterUI(${job.id})">Cover Letter</button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); getInterviewPrepUI(${job.id})">Interview Prep</button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); getSalaryInsightsUI('${job.title}', '${job.location}')">Salary Insights</button>
+                        <button class="btn btn-secondary" onclick="event.stopPropagation(); customizeResumeUI(${job.id})">Customize Resume</button>
                     </div>
                 </div>
             `).join('');
@@ -542,12 +546,161 @@
                     } catch (error) {
                         console.error('Application failed:', error);
                         alert('Failed to apply: ' + error.message);
-                    });
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }
 
-                    // Initialize
-                    document.addEventListener('DOMContentLoaded', () => {
-                        renderJobs();
-                    });
+                async function generateCoverLetterUI(jobId) {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Generating...';
+
+                    try {
+                        const result = await window.JoBikaAPI.generateCoverLetter(jobId);
+                        console.log('Cover Letter:', result);
+
+                        // Create a simple modal to show the cover letter
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
+                        modal.innerHTML = `
+                            <div style="background:white;padding:2rem;border-radius:1rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+                                <h2 style="margin-bottom:1rem;">Generated Cover Letter</h2>
+                                <pre style="white-space:pre-wrap;font-family:inherit;background:#f8f9fa;padding:1rem;border-radius:0.5rem;">${result.cover_letter}</pre>
+                                <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()" style="margin-top:1rem;">Close</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    } catch (error) {
+                        alert('Failed to generate cover letter: ' + error.message);
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }
+
+                async function getInterviewPrepUI(jobId) {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Loading...';
+
+                    try {
+                        const result = await window.JoBikaAPI.getInterviewPrep(jobId);
+                        console.log('Interview Prep:', result);
+
+                        // Create a simple modal
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
+                        modal.innerHTML = `
+                            <div style="background:white;padding:2rem;border-radius:1rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+                                <h2 style="margin-bottom:1rem;">Interview Prep Guide</h2>
+                                
+                                <h3 style="font-size:1.1rem;margin-top:1rem;">Likely Questions</h3>
+                                <ul style="list-style:disc;padding-left:1.5rem;margin-bottom:1rem;">
+                                    ${result.likely_questions.map(q => `
+                                        <li style="margin-bottom:0.5rem;">
+                                            <strong>${q.question}</strong><br>
+                                            <span style="font-size:0.9rem;color:#666;">Tip: ${q.tip}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+
+                                <h3 style="font-size:1.1rem;margin-top:1rem;">Preparation Tips</h3>
+                                <ul style="list-style:disc;padding-left:1.5rem;">
+                                    ${result.preparation_tips.preparation.map(t => `<li>${t}</li>`).join('')}
+                                </ul>
+
+                                <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()" style="margin-top:1rem;">Close</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    } catch (error) {
+                        alert('Failed to get interview prep: ' + error.message);
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }
+
+                async function getSalaryInsightsUI(title, location) {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Loading...';
+
+                    try {
+                        const result = await window.JoBikaAPI.getSalaryInsights(title, location, 2); // Default 2 years exp
+                        console.log('Salary Insights:', result);
+
+                        // Create a simple modal
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;';
+                        modal.innerHTML = `
+                            <div style="background:white;padding:2rem;border-radius:1rem;max-width:600px;width:90%;max-height:80vh;overflow-y:auto;">
+                                <h2 style="margin-bottom:1rem;">Salary Insights: ${result.job_title}</h2>
+                                <p style="color:#666;margin-bottom:1rem;">Location: ${result.location}</p>
+                                
+                                <div style="background:#f0f9ff;padding:1rem;border-radius:0.5rem;margin-bottom:1rem;">
+                                    <h3 style="font-size:1.1rem;margin-bottom:0.5rem;">Estimated Salary Range</h3>
+                                    <div style="font-size:1.5rem;font-weight:bold;color:#0284c7;">
+                                        $${result.salary_range.min.toLocaleString()} - $${result.salary_range.max.toLocaleString()}
+                                    </div>
+                                    <div style="font-size:0.9rem;color:#666;">Median: $${result.salary_range.median.toLocaleString()}</div>
+                                </div>
+
+                                <h3 style="font-size:1.1rem;margin-top:1rem;">Market Trends</h3>
+                                <ul style="list-style:none;padding:0;">
+                                    <li style="margin-bottom:0.5rem;">📈 Demand: <strong>${result.market_insights.demand}</strong></li>
+                                    <li style="margin-bottom:0.5rem;">🚀 Growth: <strong>${result.market_insights.growth_trend}</strong></li>
+                                    <li style="margin-bottom:0.5rem;">⚔️ Competition: <strong>${result.market_insights.competition}</strong></li>
+                                </ul>
+                                
+                                <h3 style="font-size:1.1rem;margin-top:1rem;">Top Paying Skills</h3>
+                                <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
+                                    ${result.market_insights.skills_premium.map(s => `<span class="skill-tag">${s}</span>`).join('')}
+                                </div>
+
+                                <button class="btn btn-primary" onclick="this.parentElement.parentElement.remove()" style="margin-top:1.5rem;">Close</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    } catch (error) {
+                        alert('Failed to get salary insights: ' + error.message);
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }
+
+                async function customizeResumeUI(jobId) {
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.disabled = true;
+                    btn.textContent = 'Customizing...';
+
+                    try {
+                        const result = await window.JoBikaAPI.customizeResume(jobId);
+                        console.log('Customized Resume:', result);
+
+                        alert(`Resume customized successfully!\n\nVersion: ${result.versionName}\nMatch Score: ${result.customized.match_score}%\n\nView it in the Resume Versions tab.`);
+                        // Optionally redirect to resume-versions.html
+                        if (confirm('View customized resume now?')) {
+                            window.location.href = 'resume-versions.html';
+                        }
+                    } catch (error) {
+                        alert('Failed to customize resume: ' + error.message);
+                    } finally {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }
+                }
+
+                // Initialize
+                document.addEventListener('DOMContentLoaded', () => {
+                    renderJobs();
+                });
             </script>
         </body>
 

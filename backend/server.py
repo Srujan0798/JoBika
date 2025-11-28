@@ -1,7 +1,7 @@
 # JoBika Backend Server - Complete with AI Agent Features
 # Python Flask + SQLite Implementation
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 import sqlite3
@@ -14,6 +14,9 @@ from werkzeug.utils import secure_filename
 import re
 import sys
 import traceback
+
+# Ensure backend directory is in path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 print("🚀 Server module loading...")
 
@@ -162,122 +165,16 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Database helper functions
 # Database Configuration
-def get_db_connection():
-    database_url = os.environ.get('DATABASE_URL')
-    
-    if database_url and database_url.startswith('postgres'):
-        # Use PostgreSQL (Supabase/Render)
-        try:
-            import psycopg2
-            from psycopg2.extras import RealDictCursor
-            conn = psycopg2.connect(database_url, sslmode='require')
-            return conn, 'postgres'
-        except Exception as e:
-            print(f"❌ Postgres Connection Error: {e}")
-            print(f"Traceback: {traceback.format_exc()}")
-            # Do NOT fall back to SQLite if Postgres is configured but fails
-            # This helps debugging
-            raise e
-    
-    # Use SQLite (Local)
-    print("⚠️ Using SQLite (DATABASE_URL not set or not postgres)")
-    conn = sqlite3.connect('jobika.db')
-    conn.row_factory = sqlite3.Row
-    return conn, 'sqlite'
-
-def get_db():
-    conn, _ = get_db_connection()
-    return conn
-
-# DB Helper to handle syntax differences
-def get_placeholder():
-    _, db_type = get_db_connection()
-    return '%s' if db_type == 'postgres' else '?'
-
-def init_db():
-    """Initialize database with all tables"""
-    conn = sqlite3.connect('jobika.db')
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        full_name TEXT,
-        phone TEXT,
-        two_factor_secret TEXT,
-        is_two_factor_enabled BOOLEAN DEFAULT 0,
-        oauth_provider TEXT,
-        oauth_id TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Resumes table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS resumes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        filename TEXT,
-        original_text TEXT,
-        enhanced_text TEXT,
-        skills TEXT,
-        experience_years INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    
-    # Jobs table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS jobs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        company TEXT NOT NULL,
-        location TEXT,
-        salary TEXT,
-        description TEXT,
-        required_skills TEXT,
-        posted_date TEXT,
-        source TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    
-    # Applications table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS applications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        job_id INTEGER NOT NULL,
-        resume_id INTEGER,
-        status TEXT DEFAULT 'applied',
-        match_score INTEGER,
-        applied_date TEXT,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (job_id) REFERENCES jobs(id),
-        FOREIGN KEY (resume_id) REFERENCES resumes(id)
-    )''')
-    
-    # Notifications table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS notifications (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT NOT NULL,
-        message TEXT NOT NULL,
-        type TEXT DEFAULT 'info',
-        is_read BOOLEAN DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    )''')
-    
-    conn.commit()
-    conn.close()
-    print("✅ Database initialized")
+from database import get_db, get_db_connection, init_db, get_placeholder
 
 # Initialize database on startup
-if not os.path.exists('jobika.db'):
-    print("📦 Database not found. Initializing for the first time...")
-    init_db()
-    print("✅ Database initialized successfully!")
-else:
-    print("✅ Database found. Checking schema...")
-    init_db()  # Ensures all tables exist
+print("🔄 Checking database schema...")
+try:
+    init_db()  # Ensures all tables exist (SQLite or Postgres)
+except Exception as e:
+    print(f"❌ Database initialization failed: {e}")
+    # Continue anyway, as it might be a temporary connection issue
+    pass
 
 # Initialize Enhanced Features
 if ENHANCED_FEATURES:
@@ -357,31 +254,59 @@ def verify_token(token):
 
 @app.route('/health')
 def health_check():
-    """Simple health check endpoint"""
-    conn, db_type = get_db_connection()
+    """Health check endpoint"""
     try:
-        # Check if users table exists
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        
+        # Check if tables exist
         if db_type == 'postgres':
-            cursor.execute("SELECT to_regclass('public.users');")
-            table_exists = cursor.fetchone()[0] is not None
+            cursor.execute("SELECT to_regclass('public.users')")
+            result = cursor.fetchone()
+            # Handle RealDictCursor vs standard
+            if isinstance(result, dict):
+                tables_exist = result['to_regclass'] is not None
+            else:
+                tables_exist = result[0] is not None
         else:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users';")
-            table_exists = cursor.fetchone() is not None
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            tables_exist = cursor.fetchone() is not None
+            
         conn.close()
+        
+        return jsonify({
+            'status': 'healthy',
+            'database_type': db_type,
+            'tables_exist': tables_exist,
+            'version': '1.0.0'
+        })
     except Exception as e:
-        table_exists = False
-        print(f"Health check DB error: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
 
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.datetime.now().isoformat(),
-        'static_folder': static_folder_path,
-        'static_folder_exists': os.path.exists(static_folder_path),
-        'python_version': sys.version,
-        'database_type': db_type,
-        'tables_exist': table_exists
-    }), 200
+@app.route('/debug-db')
+def debug_db():
+    """Debug database connection"""
+    try:
+        database_url = os.environ.get('DATABASE_URL')
+        conn, db_type = get_db_connection()
+        conn.close()
+        
+        return jsonify({
+            'database_url_set': bool(database_url),
+            'database_type': db_type,
+            'connection_successful': True,
+            'env_vars': {k: '***' for k in os.environ.keys() if 'DB' in k or 'POSTGRES' in k}
+        })
+    except Exception as e:
+        return jsonify({
+            'database_url_set': bool(os.environ.get('DATABASE_URL')),
+            'connection_successful': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 @app.route('/migrate')
 def run_migration():
@@ -448,23 +373,32 @@ def register():
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
         
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = '%s' if db_type == 'postgres' else '?'
         
         # Check if user exists
-        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        cursor.execute(f'SELECT id FROM users WHERE email = {P}', (email,))
         if cursor.fetchone():
             conn.close()
             return jsonify({'error': 'Email already registered'}), 400
         
         # Create user
         hashed_password = hash_password(password)
-        cursor.execute('''
+        cursor.execute(f'''
             INSERT INTO users (email, password_hash, full_name, phone)
-            VALUES (?, ?, ?, ?)
+            VALUES ({P}, {P}, {P}, {P})
         ''', (email, hashed_password, full_name, phone))
         conn.commit()
-        user_id = cursor.lastrowid
+        
+        # Get ID (Postgres vs SQLite)
+        if db_type == 'postgres':
+             # For Postgres, we need to fetch the ID if not using RETURNING (which we didn't above)
+             # Better to use RETURNING in the INSERT
+             cursor.execute(f'SELECT id FROM users WHERE email = {P}', (email,))
+             user_id = cursor.fetchone()['id'] # RealDictCursor
+        else:
+             user_id = cursor.lastrowid
         
         # Generate JWT token
         token = jwt.encode({
@@ -515,14 +449,15 @@ def login():
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
         
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = '%s' if db_type == 'postgres' else '?'
         
         hashed_password = hash_password(password)
-        cursor.execute('''
+        cursor.execute(f'''
             SELECT id, email, full_name, phone
             FROM users
-            WHERE email = ? AND password_hash = ?
+            WHERE email = {P} AND password_hash = {P}
         ''', (email, hashed_password))
         
         user = cursor.fetchone()
@@ -1285,12 +1220,13 @@ def get_notifications():
         if not user_id:
             return jsonify({'error': 'Unauthorized'}), 401
             
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = '%s' if db_type == 'postgres' else '?'
         
-        cursor.execute('''
+        cursor.execute(f'''
             SELECT * FROM notifications 
-            WHERE user_id = ? 
+            WHERE user_id = {P} 
             ORDER BY created_at DESC 
             LIMIT 50
         ''', (user_id,))
@@ -1325,23 +1261,24 @@ def mark_notifications_read():
         data = request.json
         notification_ids = data.get('ids', [])
         
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = '%s' if db_type == 'postgres' else '?'
         
         if notification_ids:
             # Mark specific notifications
-            placeholders = ','.join('?' * len(notification_ids))
+            placeholders = ','.join(P for _ in notification_ids)
             cursor.execute(f'''
                 UPDATE notifications 
                 SET is_read = 1 
-                WHERE user_id = ? AND id IN ({placeholders})
+                WHERE user_id = {P} AND id IN ({placeholders})
             ''', [user_id] + notification_ids)
         else:
             # Mark all as read
-            cursor.execute('''
+            cursor.execute(f'''
                 UPDATE notifications 
                 SET is_read = 1 
-                WHERE user_id = ?
+                WHERE user_id = {P}
             ''', (user_id,))
             
         conn.commit()
@@ -1355,17 +1292,16 @@ def mark_notifications_read():
 def create_notification(user_id, title, message, type='info'):
     """Helper to create a notification"""
     try:
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('''
+        P = '%s' if db_type == 'postgres' else '?'
+        
+        cursor.execute(f'''
             INSERT INTO notifications (user_id, title, message, type)
-            VALUES (?, ?, ?, ?)
+            VALUES ({P}, {P}, {P}, {P})
         ''', (user_id, title, message, type))
         conn.commit()
         conn.close()
-    except Exception as e:
-        print(f"Failed to create notification: {e}")
-
     except Exception as e:
         print(f"Failed to create notification: {e}")
 
@@ -1568,11 +1504,11 @@ scheduler.start()
 # Serve frontend
 @app.route('/')
 def serve_frontend():
-    return send_from_directory('../app', 'index.html')
+    return send_from_directory(static_folder_path, 'index.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
-    return send_from_directory('../app', path)
+    return send_from_directory(static_folder_path, path)
 
 if __name__ == '__main__':
     print("🚀 JoBika Server Starting...")

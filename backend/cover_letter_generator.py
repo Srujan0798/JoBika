@@ -142,7 +142,8 @@ def init_cover_letter_endpoints(app):
     @app.route('/api/cover-letter/generate', methods=['POST'])
     def generate_cover_letter():
         """Generate cover letter"""
-        from server import verify_token, get_db
+        from server import verify_token
+        from database import get_db_connection, get_placeholder
         
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         user_id = verify_token(token)
@@ -158,12 +159,13 @@ def init_cover_letter_endpoints(app):
             return jsonify({'error': 'Job ID required'}), 400
         
         # Get user resume data
-        conn = get_db()
+        conn, db_type = get_db_connection()
         cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
-        cursor.execute('''
+        cursor.execute(f'''
             SELECT * FROM resumes
-            WHERE user_id = ?
+            WHERE user_id = {P}
             ORDER BY created_at DESC
             LIMIT 1
         ''', (user_id,))
@@ -174,7 +176,7 @@ def init_cover_letter_endpoints(app):
             return jsonify({'error': 'No resume found. Please upload a resume first.'}), 404
         
         # Get job data
-        cursor.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
+        cursor.execute(f'SELECT * FROM jobs WHERE id = {P}', (job_id,))
         job = cursor.fetchone()
         
         if not job:
@@ -182,7 +184,7 @@ def init_cover_letter_endpoints(app):
             return jsonify({'error': 'Job not found'}), 404
         
         # Get user info
-        cursor.execute('SELECT full_name FROM users WHERE id = ?', (user_id,))
+        cursor.execute(f'SELECT full_name FROM users WHERE id = {P}', (user_id,))
         user = cursor.fetchone()
         
         conn.close()

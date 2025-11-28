@@ -3,40 +3,64 @@ Salary Insights API for JoBika
 Provides salary data and market insights for job positions
 """
 
-import random
+import json
 from datetime import datetime
+from database import get_db_connection, get_placeholder
 
 class SalaryInsightsSystem:
     """Generate salary insights and market data"""
     
     def __init__(self):
-        # Sample salary ranges by role (in USD)
-        self.salary_data = {
-            'software engineer': {'min': 80000, 'max': 180000, 'median': 120000},
-            'senior software engineer': {'min': 120000, 'max': 220000, 'median': 160000},
-            'data scientist': {'min': 90000, 'max': 190000, 'median': 130000},
-            'product manager': {'min': 100000, 'max': 200000, 'median': 140000},
-            'frontend developer': {'min': 70000, 'max': 150000, 'median': 100000},
-            'backend developer': {'min': 80000, 'max': 170000, 'median': 115000},
-            'full stack developer': {'min': 85000, 'max': 175000, 'median': 120000},
-            'devops engineer': {'min': 90000, 'max': 180000, 'median': 125000},
-            'machine learning engineer': {'min': 100000, 'max': 210000, 'median': 145000},
-            'ui ux designer': {'min': 65000, 'max': 140000, 'median': 95000},
-            'qa engineer': {'min': 60000, 'max': 130000, 'median': 85000},
-        }
+        pass  # No more hardcoded data
+    
+    def _get_salary_role(self, job_title):
+        """Get salary data from database for a role"""
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        P = get_placeholder(db_type)
         
-        # Location multipliers
-        self.location_multipliers = {
-            'san francisco': 1.4,
-            'new york': 1.3,
-            'seattle': 1.25,
-            'boston': 1.2,
-            'austin': 1.1,
-            'remote': 1.0,
-            'bangalore': 0.3,
-            'london': 1.25,
-            'default': 1.0
-        }
+        # Normalize title
+        title_lower = job_title.lower()
+        
+        # Try exact match first
+        cursor.execute(f'SELECT * FROM salary_roles WHERE role_name = {P}', (title_lower,))
+        role = cursor.fetchone()
+        
+        # If no exact match, try partial match
+        if not role:
+            cursor.execute(f'SELECT * FROM salary_roles WHERE {P} LIKE \'%\' || role_name || \'%\'', (title_lower,))
+            role = cursor.fetchone()
+        
+        # If still no match, get default software engineer
+        if not role:
+            cursor.execute(f'SELECT * FROM salary_roles WHERE role_name = {P}', ('software engineer',))
+            role = cursor.fetchone()
+        
+        conn.close()
+        return role
+    
+    def _get_location_multiplier(self, location):
+        """Get location multiplier from database"""
+        conn, db_type = get_db_connection()
+        cursor = conn.cursor()
+        P = get_placeholder(db_type)
+        
+        location_lower = location.lower()
+        
+        # Try exact match
+        cursor.execute(f'SELECT multiplier FROM location_multipliers WHERE location_name = {P}', (location_lower,))
+        result = cursor.fetchone()
+        
+        # If no match, try partial match
+        if not result:
+            cursor.execute(f'SELECT multiplier FROM location_multipliers WHERE {P} LIKE \'%\' || location_name || \'%\' LIMIT 1', (location_lower,))
+            result = cursor.fetchone()
+        
+        conn.close()
+        
+        if result:
+            return result['multiplier'] if isinstance(result, dict) else result[0]
+        return 1.0  # default
     
     def get_salary_insights(self, job_title, location='remote', experience_years=2):
         """
@@ -50,12 +74,19 @@ class SalaryInsightsSystem:
         Returns:
             dict with salary insights
         """
-        # Normalize title
-        title_key = self._normalize_title(job_title)
+        # Get salary role from database
+        role = self._get_salary_role(job_title)
+        
+        if not role:
+            return {
+                'error': 'No salary data found for this role',
+                'job_title': job_title
+            }
         
         # Get base salary range
-        base_range = self.salary_data.get(title_key, 
-            {'min': 60000, 'max': 150000, 'median': 90000})
+        base_min = role['min_salary'] if isinstance(role, dict) else role[2]
+        base_max = role['max_salary'] if isinstance(role, dict) else role[3]
+        base_median = role['median_salary'] if isinstance(role, dict) else role[4]
         
         # Apply location multiplier
         location_mult = self._get_location_multiplier(location)
@@ -65,13 +96,24 @@ class SalaryInsightsSystem:
         exp_mult = min(exp_mult, 2.0)  # Cap at 2x
         
         # Calculate final range
-        salary_min = int(base_range['min'] * location_mult * exp_mult)
-        salary_max = int(base_range['max'] * location_mult * exp_mult)
-        salary_median = int(base_range['median'] * location_mult * exp_mult)
+        salary_min = int(base_min * location_mult * exp_mult)
+        salary_max = int(base_max * location_mult * exp_mult)
+        salary_median = int(base_median * location_mult * exp_mult)
         
         # Generate insights
         percentile_25 = int(salary_min + (salary_median - salary_min) * 0.5)
         percentile_75 = int(salary_median + (salary_max - salary_median) * 0.5)
+        
+        # Get market insights from database
+        demand = role['demand_level'] if isinstance(role, dict) else role[5]
+        growth = role['growth_trend'] if isinstance(role, dict) else role[6]
+        competition = role['competition_level'] if isinstance(role, dict) else role[7]
+        skills_json = role['top_skills'] if isinstance(role, dict) else role[8]
+        
+        try:
+            top_skills = json.loads(skills_json) if skills_json else []
+        except:
+            top_skills = []
         
         return {
             'job_title': job_title,
@@ -86,65 +128,20 @@ class SalaryInsightsSystem:
                 'currency': 'USD'
             },
             'market_insights': {
-                'demand': self._get_demand_level(title_key),
-                'growth_trend': self._get_growth_trend(title_key),
-                'competition': self._get_competition_level(title_key),
-                'skills_premium': self._get_top_skills(title_key)
+                'demand': demand,
+                'growth_trend': growth,
+                'competition': competition,
+                'skills_premium': top_skills
             },
             'comparison': {
-                'vs_national_avg': self._compare_to_national(salary_median, title_key),
+                'vs_national_avg': self._compare_to_national(salary_median, base_median),
                 'vs_location_avg': self._compare_to_location(salary_median, location)
             }
         }
     
-    def _normalize_title(self, title):
-        """Normalize job title for lookup"""
-        title_lower = title.lower()
-        for key in self.salary_data.keys():
-            if key in title_lower:
-                return key
-        return 'software engineer'  # default
-    
-    def _get_location_multiplier(self, location):
-        """Get salary multiplier for location"""
-        location_lower = location.lower()
-        for key, mult in self.location_multipliers.items():
-            if key in location_lower:
-                return mult
-        return self.location_multipliers['default']
-    
-    def _get_demand_level(self, title_key):
-        """Get demand level for role"""
-        high_demand = ['machine learning engineer', 'devops engineer', 'data scientist']
-        if title_key in high_demand:
-            return 'High'
-        return random.choice(['Medium', 'High'])
-    
-    def _get_growth_trend(self, title_key):
-        """Get growth trend"""
-        growing = ['machine learning engineer', 'data scientist', 'devops engineer']
-        if title_key in growing:
-            return 'Growing (↑ 15%)'
-        return random.choice(['Stable', 'Growing (↑ 8%)'])
-    
-    def _get_competition_level(self, title_key):
-        """Get competition level"""
-        return random.choice(['Moderate', 'High', 'Medium'])
-    
-    def _get_top_skills(self, title_key):
-        """Get skills that command premium"""
-        skills_map = {
-            'software engineer': ['System Design', 'AWS', 'Kubernetes'],
-            'data scientist': ['Deep Learning', 'MLOps', 'Python'],
-            'frontend developer': ['React', 'TypeScript', 'Next.js'],
-            'backend developer': ['Microservices', 'Docker', 'PostgreSQL'],
-        }
-        return skills_map.get(title_key, ['Cloud', 'Agile', 'Leadership'])
-    
-    def _compare_to_national(self, salary, title_key):
+    def _compare_to_national(self, salary, base_median):
         """Compare to national average"""
-        base = self.salary_data.get(title_key, {}).get('median', 100000)
-        diff_pct = ((salary - base) / base) * 100
+        diff_pct = ((salary - base_median) / base_median) * 100
         if diff_pct > 10:
             return f'+{int(diff_pct)}% above national avg'
         elif diff_pct < -10:
