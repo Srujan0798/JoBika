@@ -63,12 +63,23 @@ def init_db():
             cursor.execute(schema_sql)
         else:
             # Convert PostgreSQL schema to SQLite
+            # Handle case-insensitive replacements
             schema_sql = schema_sql.replace('SERIAL PRIMARY KEY', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            schema_sql = schema_sql.replace('serial primary key', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+            
             schema_sql = schema_sql.replace('TIMESTAMP DEFAULT CURRENT_TIMESTAMP', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+            
             schema_sql = schema_sql.replace('TEXT[]', 'TEXT')
             schema_sql = schema_sql.replace('JSONB', 'TEXT')
+            schema_sql = schema_sql.replace('jsonb', 'TEXT')
+            
+            schema_sql = schema_sql.replace('BOOLEAN', 'INTEGER')
             schema_sql = schema_sql.replace('boolean', 'INTEGER')
+            
+            schema_sql = schema_sql.replace('TRUE', '1')
             schema_sql = schema_sql.replace('true', '1')
+            
+            schema_sql = schema_sql.replace('FALSE', '0')
             schema_sql = schema_sql.replace('false', '0')
             
             # Execute each statement
@@ -80,6 +91,7 @@ def init_db():
                     except sqlite3.OperationalError as e:
                         if 'already exists' not in str(e):
                             print(f"⚠️  Schema warning: {e}")
+                            print(f"Statement: {statement[:50]}...")
         
         conn.commit()
         print(f"✅ Database initialized ({db_type}) with ALL tables")
