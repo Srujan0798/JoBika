@@ -8,10 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family:Outfit:wght@300;400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/mobile.css">
+    <link rel="stylesheet" href="assets/css/guest-mode.css">
     <style>
         body {
             background: var(--gray-50);
@@ -23,52 +24,6 @@
             padding: 0 2rem;
         }
 
-        .progress-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3rem;
-            position: relative;
-        }
-
-        .progress-bar::before {
-            content: '';
-            position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: var(--gray-300);
-            z-index: 0;
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .step-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: white;
-            border: 2px solid var(--gray-300);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--gray-500);
-        }
-
-        .step-circle.active {
-            background: var(--primary-blue);
-            border-color: var(--primary-blue);
-            color: white;
-        }
-
         .upload-zone {
             border: 2px dashed var(--gray-300);
             border-radius: 1rem;
@@ -82,11 +37,6 @@
         .upload-zone:hover {
             border-color: var(--primary-blue);
             background: var(--gray-50);
-        }
-
-        .upload-zone.dragover {
-            border-color: var(--primary-blue);
-            background: rgba(99, 102, 241, 0.05);
         }
 
         .upload-icon {
@@ -105,12 +55,10 @@
         .preview-section {
             display: none;
             margin-top: 2rem;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
         }
 
         .preview-section.active {
-            display: grid;
+            display: block;
         }
 
         .preview-card {
@@ -118,50 +66,46 @@
             border-radius: 1rem;
             padding: 1.5rem;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .preview-card h3 {
             margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         }
 
-        .preview-content {
-            background: var(--gray-50);
-            padding: 1rem;
-            border-radius: 0.5rem;
+        .skill-tag {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary-blue);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
             font-size: 0.875rem;
-            line-height: 1.6;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .highlight {
-            background: rgba(34, 197, 94, 0.2);
-            padding: 0 0.25rem;
-            border-radius: 0.25rem;
+            margin: 0.25rem;
         }
     </style>
 </head>
 
 <body>
-    <div class="upload-container">
-        <div class="progress-bar">
-            <div class="progress-step">
-                <div class="step-circle active">1</div>
-                <span style="font-size: 0.875rem; font-weight: 500;">Upload</span>
-            </div>
-            <div class="progress-step">
-                <div class="step-circle">2</div>
-                <span style="font-size: 0.875rem; color: var(--gray-500);">Enhance</span>
-            </div>
-            <div class="progress-step">
-                <div class="step-circle">3</div>
-                <span style="font-size: 0.875rem; color: var(--gray-500);">Complete</span>
+    <!-- Login Prompt Modal -->
+    <div id="loginPromptModal" class="login-prompt-modal">
+        <div class="login-prompt-content">
+            <div class="login-prompt-icon">🔒</div>
+            <h3>Login Required</h3>
+            <p>To <span id="featureName">save your resume permanently</span>, you need to create an account.</p>
+
+            <div class="login-prompt-buttons">
+                <button class="login-prompt-btn login-prompt-btn-primary"
+                    onclick="window.location.href='/auth.html?mode=register'">
+                    Create Free Account
+                </button>
+                <button class="login-prompt-btn login-prompt-btn-secondary"
+                    onclick="window.location.href='/auth.html?mode=login'">
+                    Login
+                </button>
+                <button class="login-prompt-btn login-prompt-btn-tertiary" onclick="sessionManager.hideLoginPrompt()">
+                    Continue as Guest
+                </button>
             </div>
         </div>
+    </div>
 
+    <div class="upload-container">
         <div class="card" style="padding: 0;">
             <div style="padding: 2rem; border-bottom: 1px solid var(--gray-200);">
                 <h1 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem;">Upload Your Resume
@@ -181,285 +125,42 @@
 
                 <div class="preview-section" id="previewSection">
                     <div class="preview-card">
-                        <h3>
-                            <span style="color: var(--gray-600);">📋</span>
-                            Original Resume
-                        </h3>
-                        <div class="preview-content" id="originalPreview">
-                            <p><strong>John Doe</strong></p>
-                            <p>Software Developer</p>
-                            <p>Email: john@example.com | Phone: +91 98765 43210</p>
-                            <br>
-                            <p><strong>EXPERIENCE</strong></p>
-                            <p>Software Developer at TechCorp (2022-Present)</p>
-                            <p>- Worked on web applications</p>
-                            <p>- Used React and Node.js</p>
-                            <br>
-                            <p><strong>SKILLS</strong></p>
-                            <p>JavaScript, React, Node.js, HTML, CSS</p>
-                        </div>
+                        <h3>📋 Resume Analysis</h3>
+                        <div id="resumePreview"></div>
                     </div>
 
-                    <div class="preview-card">
-                        <h3>
-                            <span style="color: var(--success);">✨</span>
-                            AI-Enhanced Resume
-                        </h3>
-                        <div class="preview-content" id="enhancedPreview">
-                            <p><strong>John Doe</strong></p>
-                            <p><span class="highlight">Full-Stack Software Engineer</span></p>
-                            <p>Email: john@example.com | Phone: +91 98765 43210 | <span class="highlight">LinkedIn:
-                                    linkedin.com/in/johndoe</span></p>
-                            <br>
-                            <p><strong>PROFESSIONAL EXPERIENCE</strong></p>
-                            <p><span class="highlight">Full-Stack Software Engineer</span> at TechCorp (2022-Present)
-                            </p>
-                            <p>- <span class="highlight">Architected and developed</span> scalable web applications
-                                <span class="highlight">serving 10,000+ users</span></p>
-                            <p>- <span class="highlight">Implemented RESTful APIs</span> using React and Node.js, <span
-                                    class="highlight">improving performance by 40%</span></p>
-                            <p>- <span class="highlight">Collaborated with cross-functional teams</span> to deliver
-                                features on time</p>
-                            <br>
-                            <p><strong>TECHNICAL SKILLS</strong></p>
-                            <p><span class="highlight">Languages:</span> JavaScript (ES6+), TypeScript, HTML5, CSS3</p>
-                            <p><span class="highlight">Frameworks:</span> React.js, Node.js, Express.js</p>
-                            <p><span class="highlight">Tools:</span> Git, Docker, AWS</p>
-                        </div>
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button class="btn btn-primary" id="saveButton" onclick="saveResume()">Save Resume</button>
+                        <button class="btn btn-secondary" onclick="window.location.href='jobs.html'">Browse
+                            Jobs</button>
                     </div>
-                </div>
-
-                <div style="margin-top: 2rem; text-align: center; display: none;" id="actionButtons">
-                    <button class="btn btn-primary" onclick="acceptEnhancements()">Accept Enhancements</button>
-                    <button class="btn btn-secondary" onclick="skipEnhancements()">Use Original</button>
-            background: var(--gray-300);
-            z-index: 0;
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.5rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .step-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: white;
-            border: 2px solid var(--gray-300);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--gray-500);
-        }
-
-        .step-circle.active {
-            background: var(--primary-blue);
-            border-color: var(--primary-blue);
-            color: white;
-        }
-
-        .upload-zone {
-            border: 2px dashed var(--gray-300);
-            border-radius: 1rem;
-            padding: 4rem 2rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all var(--transition-base);
-            background: white;
-        }
-
-        .upload-zone:hover {
-            border-color: var(--primary-blue);
-            background: var(--gray-50);
-        }
-
-        .upload-zone.dragover {
-            border-color: var(--primary-blue);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .upload-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 1rem;
-            background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2.5rem;
-        }
-
-        .preview-section {
-            display: none;
-            margin-top: 2rem;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .preview-section.active {
-            display: grid;
-        }
-
-        .preview-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .preview-card h3 {
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .preview-content {
-            background: var(--gray-50);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            line-height: 1.6;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-
-        .highlight {
-            background: rgba(34, 197, 94, 0.2);
-            padding: 0 0.25rem;
-            border-radius: 0.25rem;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="upload-container">
-        <div class="progress-bar">
-            <div class="progress-step">
-                <div class="step-circle active">1</div>
-                <span style="font-size: 0.875rem; font-weight: 500;">Upload</span>
-            </div>
-            <div class="progress-step">
-                <div class="step-circle">2</div>
-                <span style="font-size: 0.875rem; color: var(--gray-500);">Enhance</span>
-            </div>
-            <div class="progress-step">
-                <div class="step-circle">3</div>
-                <span style="font-size: 0.875rem; color: var(--gray-500);">Complete</span>
-            </div>
-        </div>
-
-        <div class="card" style="padding: 0;">
-            <div style="padding: 2rem; border-bottom: 1px solid var(--gray-200);">
-                <h1 style="font-family: var(--font-display); font-size: 2rem; margin-bottom: 0.5rem;">Upload Your Resume
-                </h1>
-                <p style="color: var(--gray-600);">Let our AI analyze and enhance your resume for better job matches</p>
-            </div>
-
-            <div style="padding: 2rem;">
-                <div class="upload-zone" id="uploadZone">
-                    <div class="upload-icon">📄</div>
-                    <h3 style="margin-bottom: 0.5rem;">Drag your resume here or click to browse</h3>
-                    <p style="color: var(--gray-600); margin-bottom: 1rem;">Supported formats: PDF, DOCX (Max 5MB)</p>
-                    <input type="file" id="fileInput" accept=".pdf,.docx" style="display: none;">
-                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">Choose
-                        File</button>
-                </div>
-
-                <div class="preview-section" id="previewSection">
-                    <div class="preview-card">
-                        <h3>
-                            <span style="color: var(--gray-600);">📋</span>
-                            Original Resume
-                        </h3>
-                        <div class="preview-content" id="originalPreview">
-                            <p><strong>John Doe</strong></p>
-                            <p>Software Developer</p>
-                            <p>Email: john@example.com | Phone: +91 98765 43210</p>
-                            <br>
-                            <p><strong>EXPERIENCE</strong></p>
-                            <p>Software Developer at TechCorp (2022-Present)</p>
-                            <p>- Worked on web applications</p>
-                            <p>- Used React and Node.js</p>
-                            <br>
-                            <p><strong>SKILLS</strong></p>
-                            <p>JavaScript, React, Node.js, HTML, CSS</p>
-                        </div>
-                    </div>
-
-                    <div class="preview-card">
-                        <h3>
-                            <span style="color: var(--success);">✨</span>
-                            AI-Enhanced Resume
-                        </h3>
-                        <div class="preview-content" id="enhancedPreview">
-                            <p><strong>John Doe</strong></p>
-                            <p><span class="highlight">Full-Stack Software Engineer</span></p>
-                            <p>Email: john@example.com | Phone: +91 98765 43210 | <span class="highlight">LinkedIn:
-                                    linkedin.com/in/johndoe</span></p>
-                            <br>
-                            <p><strong>PROFESSIONAL EXPERIENCE</strong></p>
-                            <p><span class="highlight">Full-Stack Software Engineer</span> at TechCorp (2022-Present)
-                            </p>
-                            <p>- <span class="highlight">Architected and developed</span> scalable web applications
-                                <span class="highlight">serving 10,000+ users</span></p>
-                            <p>- <span class="highlight">Implemented RESTful APIs</span> using React and Node.js, <span
-                                    class="highlight">improving performance by 40%</span></p>
-                            <p>- <span class="highlight">Collaborated with cross-functional teams</span> to deliver
-                                features on time</p>
-                            <br>
-                            <p><strong>TECHNICAL SKILLS</strong></p>
-                            <p><span class="highlight">Languages:</span> JavaScript (ES6+), TypeScript, HTML5, CSS3</p>
-                            <p><span class="highlight">Frameworks:</span> React.js, Node.js, Express.js</p>
-                            <p><span class="highlight">Tools:</span> Git, Docker, AWS</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 2rem; text-align: center; display: none;" id="actionButtons">
-                    <button class="btn btn-primary" onclick="acceptEnhancements()">Accept Enhancements</button>
-                    <button class="btn btn-secondary" onclick="skipEnhancements()">Use Original</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="assets/js/session-manager.js"></script>
     <script src="assets/js/app.js"></script>
     <script>
-        // Check authentication
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.JoBikaAPI) {
-                window.JoBikaAPI.requireAuth();
-            }
-        });
-
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('fileInput');
         const previewSection = document.getElementById('previewSection');
-        const actionButtons = document.getElementById('actionButtons');
+        let currentResumeData = null;
 
         uploadZone.addEventListener('click', () => fileInput.click());
 
         uploadZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadZone.classList.add('dragover');
+            uploadZone.style.borderColor = 'var(--primary-blue)';
         });
 
         uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
+            uploadZone.style.borderColor = 'var(--gray-300)';
         });
 
         uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadZone.classList.remove('dragover');
+            uploadZone.style.borderColor = 'var(--gray-300)';
             const file = e.dataTransfer.files[0];
             handleFile(file);
         });
@@ -472,75 +173,86 @@
         async function handleFile(file) {
             if (!file) return;
 
-            // Show loading state
             uploadZone.innerHTML = `
                 <div class="spinner"></div>
                 <p style="margin-top: 1rem;">Analyzing your resume with AI...</p>
-                <p style="font-size: 0.875rem; color: var(--gray-500);">Extracting skills, experience, and formatting...</p>
             `;
 
             try {
-                // Call real API
-                const data = await window.JoBikaAPI.uploadResume(file);
-                
-                // Update UI with real data
+                const formData = new FormData();
+                formData.append('file', file);
+
+                // Use guest endpoint if not logged in
+                const endpoint = sessionManager.isGuest ? '/api/guest/upload-resume' : '/api/resume/upload';
+                const headers = {};
+
+                if (!sessionManager.isGuest) {
+                    const token = localStorage.getItem('auth_token');
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+
+                currentResumeData = data;
+
+                // Store in guest session if guest mode
+                if (sessionManager.isGuest) {
+                    sessionManager.setGuestData('resume', data);
+                }
+
+                // Show preview
                 uploadZone.style.display = 'none';
                 previewSection.classList.add('active');
-                actionButtons.style.display = 'block';
 
-                // Update Original Preview
-                const originalPreview = document.getElementById('originalPreview');
-                originalPreview.innerHTML = `
-                    <p><strong>${data.extractedInfo.name || 'Name not found'}</strong></p>
-                    <p>${data.extractedInfo.email || ''} | ${data.extractedInfo.phone || ''}</p>
+                const preview = document.getElementById('resumePreview');
+                preview.innerHTML = `
+                    <p><strong>Name:</strong> ${data.extractedInfo?.name || 'Not detected'}</p>
+                    <p><strong>Email:</strong> ${data.extractedInfo?.email || 'Not detected'}</p>
+                    <p><strong>Phone:</strong> ${data.extractedInfo?.phone || 'Not detected'}</p>
+                    <p><strong>Experience:</strong> ${data.experienceYears || 0} years</p>
                     <br>
-                    <p><strong>SKILLS</strong></p>
-                    <p>${Array.isArray(data.skills) ? data.skills.join(', ') : data.skills}</p>
-                    <br>
-                    <p><strong>EXPERIENCE</strong></p>
-                    <p>${data.experienceYears} years detected</p>
+                    <p><strong>Skills Detected:</strong></p>
+                    <div>
+                        ${Array.isArray(data.skills) ? data.skills.map(s => `<span class="skill-tag">${s}</span>`).join('') : 'No skills detected'}
+                    </div>
+                    ${sessionManager.isGuest ? '<p style="margin-top: 1rem; color: var(--warning);"><strong>⚠️ Guest Mode:</strong> Data will be lost when you close this tab. Login to save permanently.</p>' : ''}
                 `;
 
-                // Update Enhanced Preview (Simulated for now as API returns same structure, 
-                // but in a real app we'd have 'enhanced_text' or similar)
-                // The backend 'upload_resume' returns 'id', 'filename', 'skills', 'experienceYears', 'extractedInfo'.
-                // It doesn't return the full enhanced text in the JSON response yet, but it saves it to DB.
-                // We can show the extracted skills as "Enhanced" for now or fetch the resume details.
-                
-                const enhancedPreview = document.getElementById('enhancedPreview');
-                enhancedPreview.innerHTML = `
-                    <p><strong>${data.extractedInfo.name || 'Candidate'}</strong></p>
-                    <p><span class="highlight">AI Optimized Profile</span></p>
-                    <p>${data.extractedInfo.email || ''} | ${data.extractedInfo.phone || ''}</p>
-                    <br>
-                    <p><strong>OPTIMIZED SKILLS</strong></p>
-                    <p>${Array.isArray(data.skills) ? data.skills.map(s => `<span class="highlight">${s}</span>`).join(', ') : data.skills}</p>
-                    <br>
-                    <p><strong>INSIGHTS</strong></p>
-                    <p>• <span class="highlight">Format standardized</span> for ATS compatibility</p>
-                    <p>• <span class="highlight">${data.skills.length} key skills</span> identified and highlighted</p>
-                    <p>• <span class="highlight">Experience level</span> calibrated to market standards</p>
-                `;
+                // Update save button text for guest mode
+                const saveButton = document.getElementById('saveButton');
+                if (sessionManager.isGuest) {
+                    saveButton.textContent = 'Login to Save';
+                    saveButton.onclick = () => sessionManager.showLoginPrompt('save your resume permanently');
+                }
 
             } catch (error) {
                 console.error('Upload failed:', error);
                 uploadZone.innerHTML = `
                     <div class="upload-icon" style="background: var(--warning);">⚠️</div>
-                    <h3 style="margin-bottom: 0.5rem;">Upload Failed</h3>
+                    <h3>Upload Failed</h3>
                     <p style="color: var(--gray-600); margin-bottom: 1rem;">${error.message}</p>
                     <button class="btn btn-primary" onclick="window.location.reload()">Try Again</button>
                 `;
             }
         }
 
-        function acceptEnhancements() {
-            // In a real app, we might trigger another API call to confirm "acceptance" 
-            // or just proceed since it's already saved.
-            window.location.href = 'dashboard.html';
-        }
-
-        function skipEnhancements() {
-            window.location.href = 'dashboard.html';
+        function saveResume() {
+            if (sessionManager.isGuest) {
+                sessionManager.showLoginPrompt('save your resume permanently');
+            } else {
+                // Already saved via API
+                window.location.href = 'dashboard.html';
+            }
         }
     </script>
 </body>
