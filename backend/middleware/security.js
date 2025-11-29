@@ -84,7 +84,7 @@ class SecurityMiddleware {
     corsOptions() {
         return {
             origin: (origin, callback) => {
-                const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+                const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
 
                 // Allow requests with no origin (mobile apps, curl, etc.)
                 if (!origin) return callback(null, true);

@@ -1,7 +1,6 @@
 // API Configuration
-const API_BASE_URL = (window.location.protocol === 'file:' || window.location.hostname === 'localhost')
-    ? 'http://localhost:3000/api'
-    : '/api';
+// Production API URL
+const API_BASE_URL = 'https://jobika-backend-production.up.railway.app/api';
 
 // Global app state
 const AppState = {

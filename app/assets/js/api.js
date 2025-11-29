@@ -6,10 +6,8 @@ class JoBikaAPI {
          * Automatically detects environment and uses correct API URL
          */
 
-        // API URL - Update this after Railway deployment
-        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? 'http://localhost:3000'  // Local development
-            : 'https://jobika-backend-production.up.railway.app';  // Production (UPDATE THIS after Railway deployment)
+        // Production API URL
+        const API_URL = 'https://jobika-backend-production.up.railway.app';
 
         console.log('🔗 API URL:', API_URL);
         this.baseURL = API_URL;
