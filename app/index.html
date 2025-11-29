@@ -4,227 +4,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JoBika - AI-Powered Job Search for India</title>
-    <meta name="description"
-        content="Find your dream job in 2-5 minutes with AI-powered resume tailoring and auto-apply to 20+ jobs daily">
-    <link rel="stylesheet" href="assets/css/premium.css">
+    <title>JoBika - AI-Powered Job Search for India 🇮🇳</title>
+    <link rel="stylesheet" href="assets/css/index.css">
+    <link rel="stylesheet" href="assets/css/ux-states.css">
 </head>
 
-<body class="bg-gradient-to-br from-violet-50 to-indigo-100">
-    <!-- Navigation -->
-    <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-sm z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <h1
-                        class="text-2xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                        JoBika
-                    </h1>
-                </div>
-                <div class="hidden md:flex space-x-8">
-                    <a href="jobs.html" class="text-gray-700 hover:text-violet-600">Jobs</a>
-                    <a href="chat.html" class="text-gray-700 hover:text-violet-600">AI Coach</a>
-                    <a href="#features" class="text-gray-700 hover:text-violet-600">Features</a>
-                    <a href="pricing.html" class="text-gray-700 hover:text-violet-600">Pricing</a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <a href="login.html" class="text-gray-700 hover:text-violet-600">Login</a>
-                    <a href="signup.html" class="btn-primary">Get Started Free</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="pt-32 pb-20 px-4">
-        <div class="max-w-7xl mx-auto text-center">
-            <h2 class="text-5xl md:text-6xl font-bold mb-6">
-                Find Your Dream Job in
-                <span class="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                    2-5 Minutes
-                </span>
-            </h2>
-            <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-                AI tailors your resume for each job. Auto-applies to 20+ perfect matches daily.
-                Built for the Indian job market (CTC, notice period, and all).
-            </p>
-
-            <!-- Quick Demo Search -->
-            <div class="max-w-2xl mx-auto mb-12">
-                <div class="card p-6">
-                    <div class="flex gap-4">
-                        <input type="text" id="demo-search"
-                            placeholder="Try: Software Engineer, Data Analyst, Product Manager..."
-                            class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500">
-                        <button onclick="tryDemoSearch()" class="btn-primary">
-                            Try Now - Free!
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-500 mt-2">✨ No signup required to browse jobs</p>
-                </div>
-            </div>
-
-            <!-- Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                <div class="card p-6">
-                    <div class="text-4xl font-bold text-violet-600 mb-2">50,000+</div>
-                    <div class="text-gray-600">Jobs Daily</div>
-                </div>
-                <div class="card p-6">
-                    <div class="text-4xl font-bold text-violet-600 mb-2">2-5 Min</div>
-                    <div class="text-gray-600">Per Application</div>
-                </div>
-                <div class="card p-6">
-                    <div class="text-4xl font-bold text-violet-600 mb-2">95%</div>
-                    <div class="text-gray-600">ATS Score</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section id="features" class="py-20 px-4 bg-white">
-        <div class="max-w-7xl mx-auto">
-            <h3 class="text-4xl font-bold text-center mb-16">What Makes JoBika Different?</h3>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <!-- Feature 1 -->
-                <div class="card p-8 hover:shadow-xl transition-shadow">
-                    <div class="text-4xl mb-4">🎯</div>
-                    <h4 class="text-xl font-bold mb-3">AI Resume Tailoring</h4>
-                    <p class="text-gray-600">
-                        AI customizes your resume for EACH job. Keywords, skills, experience - perfectly matched.
-                    </p>
-                    <a href="chat.html" class="text-violet-600 hover:text-violet-700 mt-4 inline-block">
-                        Try AI Coach Free →
-                    </a>
-                </div>
-
-                <!-- Feature 2 -->
-                <div class="card p-8 hover:shadow-xl transition-shadow">
-                    <div class="text-4xl mb-4">⚡</div>
-                    <h4 class="text-xl font-bold mb-3">Auto-Apply Engine</h4>
-                    <p class="text-gray-600">
-                        Automatically fills forms, uploads resume, submits applications. Apply to 20 jobs while you
-                        sleep.
-                    </p>
-                    <a href="jobs.html" class="text-violet-600 hover:text-violet-700 mt-4 inline-block">
-                        Browse Jobs →
-                    </a>
-                </div>
-
-                <!-- Feature 3 -->
-                <div class="card p-8 hover:shadow-xl transition-shadow">
-                    <div class="text-4xl mb-4">🇮🇳</div>
-                    <h4 class="text-xl font-bold mb-3">Made for India</h4>
-                    <p class="text-gray-600">
-                        CTC calculator, notice period tracker, immediate joiner tags. We speak your language.
-                    </p>
-                    <a href="signup.html" class="text-violet-600 hover:text-violet-700 mt-4 inline-block">
-                        Get Started Free →
-                    </a>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- How It Works -->
-    <section class="py-20 px-4">
-        <div class="max-w-5xl mx-auto">
-            <h3 class="text-4xl font-bold text-center mb-16">How It Works</h3>
-
-            <div class="space-y-8">
-                <div class="flex items-start gap-6">
-                    <div
-                        class="flex-shrink-0 w-12 h-12 bg-violet-600 text-white rounded-full flex items-center justify-center font-bold">
-                        1
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold mb-2">Upload Your Resume (Once)</h4>
-                        <p class="text-gray-600">AI parses your experience, skills, education. Takes 30 seconds.</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-6">
-                    <div
-                        class="flex-shrink-0 w-12 h-12 bg-violet-600 text-white rounded-full flex items-center justify-center font-bold">
-                        2
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold mb-2">AI Finds Perfect Matches</h4>
-                        <p class="text-gray-600">We scan 50,000+ jobs daily. AI scores each 0-100% match for you.</p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-6">
-                    <div
-                        class="flex-shrink-0 w-12 h-12 bg-violet-600 text-white rounded-full flex items-center justify-center font-bold">
-                        3
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold mb-2">AI Tailors Resume for Each Job</h4>
-                        <p class="text-gray-600">Customizes keywords, reorders skills, emphasizes relevant experience.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="flex items-start gap-6">
-                    <div
-                        class="flex-shrink-0 w-12 h-12 bg-violet-600 text-white rounded-full flex items-center justify-center font-bold">
-                        4
-                    </div>
-                    <div>
-                        <h4 class="text-xl font-bold mb-2">Auto-Apply in 2 Minutes</h4>
-                        <p class="text-gray-600">Fills forms, uploads resume, submits. You review or let it run
-                            automatically.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center mt-12">
-                <a href="signup.html" class="btn-primary text-lg px-8 py-4">
-                    Start Applying Today - Free
-                </a>
-                <p class="text-sm text-gray-500 mt-4">No credit card required • 10 free applications</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="py-20 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
-        <div class="max-w-4xl mx-auto text-center">
-            <h3 class="text-4xl font-bold mb-6">Ready to 10x Your Job Search?</h3>
-            <p class="text-xl mb-8 opacity-90">
-                Join 10,000+ job seekers who found their dream job with JoBika
-            </p>
-            <div class="flex gap-4 justify-center">
-                <a href="signup.html"
-                    class="bg-white text-violet-600 px-8 py-4 rounded-lg font-semibold hover:shadow-xl transition-shadow">
-                    Get Started Free
-                </a>
-                <a href="jobs.html"
-                    class="border-2 border-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-violet-600 transition-colors">
-                    Browse Jobs
-                </a>
-            </div>
-        </div>
-    </section>
-
+<body>
+    <!-- Load Indian Formatters -->
+    <script src="assets/js/indianFormatters.js"></script>
     <script src="assets/js/api.js"></script>
-    <script>
-        function tryDemoSearch() {
-            const query = document.getElementById('demo-search').value;
-            if (query) {
-                localStorage.setItem('demo_search', query);
-                window.location.href = 'jobs.html';
-            } else {
-                window.location.href = 'jobs.html';
-            }
-        }
+    <script src="assets/js/errorHandling.js"></script>
+    <script src="assets/js/performance.js"></script>
 
-        // Enter key support
-        document.getElementById('demo-search')?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') tryDemoSearch();
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Global Loader -->
+    <div id="global-loader" style="display: none;">
+        <div class="loader-spinner"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="app">
+        <!-- Content loaded dynamically -->
+    </div>
+
+    <script>
+        // Apply Indian formatters globally
+        window.formatSalary = formatSalary;
+        window.formatCTCBreakdown = formatCTCBreakdown;
+        window.formatExperience = formatExperience;
+        window.formatNoticePeriod = formatNoticePeriod;
+        window.formatWorkMode = formatWorkMode;
+        window.formatDate = formatDate;
+        window.formatRelativeTime = formatRelativeTime;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('✅ Indian formatters loaded');
+            console.log('✅ Error handling initialized');
+            console.log('✅ Performance monitoring active');
         });
     </script>
 </body>

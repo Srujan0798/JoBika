@@ -558,6 +558,214 @@ app.post('/api/log-error', (req, res) => {
     }
 });
 
+// ============================================================
+// SAVED JOBS ENDPOINTS
+// ============================================================
+
+app.post('/api/saved-jobs', authMiddleware, async (req, res) => {
+    try {
+        const { jobId } = req.body;
+        await db.query(
+            'INSERT INTO saved_jobs (user_id, job_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
+            [req.user.id, jobId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/saved-jobs', authMiddleware, async (req, res) => {
+    try {
+        const saved = await db.query(`
+            SELECT j.*, s.created_at as saved_at, s.notes
+            FROM saved_jobs s
+            JOIN jobs j ON s.job_id = j.id
+            WHERE s.user_id = ?
+            ORDER BY s.created_at DESC
+        `, [req.user.id]);
+        res.json(saved);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/saved-jobs/:jobId', authMiddleware, async (req, res) => {
+    try {
+        await db.query(
+            'DELETE FROM saved_jobs WHERE user_id = ? AND job_id = ?',
+            [req.user.id, req.params.jobId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================
+// DASHBOARD STATS ENDPOINT
+// ============================================================
+
+app.get('/api/users/dashboard-stats', authMiddleware, async (req, res) => {
+    try {
+        const stats = {
+            totalApplications: 0,
+            inProgress: 0,
+            interviews: 0,
+            offers: 0,
+            responseRate: 0,
+            savedJobs: 0,
+            applicationsByStatus: {},
+            recentActivity: []
+        };
+
+        // Total applications
+        const appCount = await db.query(
+            'SELECT COUNT(*) as count FROM applications WHERE user_id = ?',
+            [req.user.id]
+        );
+        stats.totalApplications = appCount[0]?.count || 0;
+
+        // Applications by status
+        const statusCounts = await db.query(`
+            SELECT status, COUNT(*) as count 
+            FROM applications 
+            WHERE user_id = ? 
+            GROUP BY status
+        `, [req.user.id]);
+
+        statusCounts.forEach(row => {
+            stats.applicationsByStatus[row.status] = row.count;
+
+            if (['viewed', 'phone_screen', 'interview_scheduled'].includes(row.status)) {
+                stats.inProgress += row.count;
+            }
+            if (row.status === 'interview_scheduled') {
+                stats.interviews += row.count;
+            }
+            if (row.status === 'offer') {
+                stats.offers += row.count;
+            }
+        });
+
+        // Response rate
+        const responded = await db.query(`
+            SELECT COUNT(*) as count 
+            FROM applications 
+            WHERE user_id = ? AND status != 'applied'
+        `, [req.user.id]);
+        stats.responseRate = stats.totalApplications > 0
+            ? Math.round((responded[0]?.count / stats.totalApplications) * 100)
+            : 0;
+
+        // Saved jobs count
+        const savedCount = await db.query(
+            'SELECT COUNT(*) as count FROM saved_jobs WHERE user_id = ?',
+            [req.user.id]
+        );
+        stats.savedJobs = savedCount[0]?.count || 0;
+
+        // Recent activity
+        const recent = await db.query(`
+            SELECT * FROM application_events 
+            WHERE application_id IN (
+                SELECT id FROM applications WHERE user_id = ?
+            )
+            ORDER BY created_at DESC
+            LIMIT 10
+        `, [req.user.id]);
+        stats.recentActivity = recent;
+
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================
+// JOB ALERTS ENDPOINTS
+// ============================================================
+
+app.post('/api/alerts', authMiddleware, validate(alertSchema), async (req, res) => {
+    try {
+        const { name, keywords, locations, jobTypes, experienceMin, experienceMax, salaryMin } = req.validated;
+
+        const alertId = await db.query(`
+            INSERT INTO job_alerts 
+            (user_id, name, keywords, locations, job_types, experience_min, experience_max, salary_min)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+        `, [req.user.id, name, keywords, locations, jobTypes, experienceMin, experienceMax, salaryMin]);
+
+        res.json({ success: true, alertId: alertId[0]?.id });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/alerts', authMiddleware, async (req, res) => {
+    try {
+        const alerts = await db.query(
+            'SELECT * FROM job_alerts WHERE user_id = ? ORDER BY created_at DESC',
+            [req.user.id]
+        );
+        res.json(alerts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.put('/api/alerts/:id', authMiddleware, async (req, res) => {
+    try {
+        const { isActive } = req.body;
+        await db.query(
+            'UPDATE job_alerts SET is_active = ? WHERE id = ? AND user_id = ?',
+            [isActive, req.params.id, req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.delete('/api/alerts/:id', authMiddleware, async (req, res) => {
+    try {
+        await db.query(
+            'DELETE FROM job_alerts WHERE id = ? AND user_id = ?',
+            [req.params.id, req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================
+// SUBSCRIPTION & USAGE ENDPOINTS
+// ============================================================
+
+const { SubscriptionManager } = require('./middleware/subscription');
+
+app.get('/api/subscription/status', authMiddleware, async (req, res) => {
+    try {
+        const stats = await SubscriptionManager.getUsageStats(req.user.id);
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/subscription/limits', authMiddleware, async (req, res) => {
+    try {
+        const user = await db.query('SELECT subscription_tier FROM users WHERE id = ?', [req.user.id]);
+        const tier = user[0]?.subscription_tier || 'free';
+        const limits = SubscriptionManager.getLimits(tier);
+        res.json(limits);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Use error handling middleware as the last middleware
 app.use(errorHandler.errorMiddleware());
 
