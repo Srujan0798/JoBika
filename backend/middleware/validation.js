@@ -67,7 +67,6 @@ const autoApplySchema = z.object({
         expectedCTC: z.number().positive().optional(),
         noticePeriod: z.number().int().min(0).max(180).optional()
     })
-})
 });
 
 // Job Alert Schema
