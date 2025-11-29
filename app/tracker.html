@@ -115,23 +115,8 @@
                     </thead>
                     <tbody id="applicationsTable">
                         <!-- Populated by JS -->
-                        <tr style="border-bottom: 1px solid #E2E8F0;">
-                            <td class="p-3 font-bold">Swiggy</td>
-                            <td class="p-3">Senior React Developer</td>
-                            <td class="p-3 text-gray">Nov 28, 2024</td>
-                            <td class="p-3"><span class="badge badge-match">Interview</span></td>
-                            <td class="p-3">
-                                <button class="btn btn-secondary text-sm py-1 px-2">View</button>
-                            </td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid #E2E8F0;">
-                            <td class="p-3 font-bold">Zomato</td>
-                            <td class="p-3">Product Manager</td>
-                            <td class="p-3 text-gray">Nov 27, 2024</td>
-                            <td class="p-3"><span class="badge badge-new">Applied</span></td>
-                            <td class="p-3">
-                                <button class="btn btn-secondary text-sm py-1 px-2">View</button>
-                            </td>
+                        <tr>
+                            <td colspan="5" class="text-center p-4">Loading applications...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -141,9 +126,65 @@
 
     <script src="assets/js/app.js"></script>
     <script>
-        function addApplication() {
-            alert("Open modal to add manual application");
+        async function loadApplications() {
+            try {
+                const response = await fetch('http://localhost:3000/api/applications');
+                const data = await response.json();
+                renderTable(data.applications);
+                updateStats(data.applications);
+            } catch (error) {
+                console.error('Error loading applications:', error);
+            }
         }
+
+        function renderTable(apps) {
+            const tbody = document.getElementById('applicationsTable');
+            if (apps.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No applications found.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = apps.map(app => `
+                <tr style="border-bottom: 1px solid #E2E8F0;">
+                    <td class="p-3 font-bold">${app.company}</td>
+                    <td class="p-3">${app.role}</td>
+                    <td class="p-3 text-gray">${app.date}</td>
+                    <td class="p-3"><span class="badge ${getStatusBadge(app.status)}">${app.status}</span></td>
+                    <td class="p-3">
+                        <button class="btn btn-secondary text-sm py-1 px-2">View</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusBadge(status) {
+            switch (status.toLowerCase()) {
+                case 'interview': return 'badge-match';
+                case 'offer': return 'badge-match'; // Green
+                case 'rejected': return 'badge-new'; // Red/Gray (using new for now)
+                default: return 'badge-new';
+            }
+        }
+
+        function updateStats(apps) {
+            // Logic to update top cards based on data
+            // For now, we'll keep the static numbers or update them if needed
+        }
+
+        function addApplication() {
+            // Simple prompt for now
+            const company = prompt("Enter Company Name:");
+            if (!company) return;
+            const role = prompt("Enter Role:");
+
+            fetch('http://localhost:3000/api/applications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company, role, status: 'Applied' })
+            }).then(() => loadApplications());
+        }
+
+        document.addEventListener('DOMContentLoaded', loadApplications);
     </script>
 </body>
 

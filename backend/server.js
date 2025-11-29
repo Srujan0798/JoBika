@@ -288,6 +288,23 @@ app.post('/api/orion/chat', async (req, res) => {
     }
 });
 
+// 11. Application Tracker Endpoints
+let applications = [
+    { id: 1, company: 'Swiggy', role: 'Senior React Developer', date: '2024-11-28', status: 'Interview' },
+    { id: 2, company: 'Zomato', role: 'Product Manager', date: '2024-11-27', status: 'Applied' },
+    { id: 3, company: 'Flipkart', role: 'SDE II', date: '2024-11-25', status: 'Rejected' }
+];
+
+app.get('/api/applications', (req, res) => {
+    res.json({ applications });
+});
+
+app.post('/api/applications', (req, res) => {
+    const newApp = { id: applications.length + 1, ...req.body, date: new Date().toISOString().split('T')[0] };
+    applications.push(newApp);
+    res.json({ success: true, application: newApp });
+});
+
 // Start Server
 app.listen(port, () => {
     console.log('JoBika AI Backend running on port ' + port);
