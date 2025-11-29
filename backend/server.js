@@ -514,13 +514,54 @@ async function getTailoredResumeForJob(userId, jobId) {
 }
 
 // Start server
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`\n🚀 JoBika Backend Server Running`);
     console.log(`📍 Port: ${port}`);
     console.log(`💾 Database: ${db.dbPath}`);
     console.log(`🤖 Gemini AI: ${process.env.GEMINI_API_KEY ? '✅ Configured (FREE!)' : '❌ Not configured - Get FREE key: https://aistudio.google.com/app/apikey'}`);
     console.log(`\n✨ All systems ready!\n`);
 });
+
+// Store server globally for graceful shutdown
+global.server = server;
+
+// Setup Graceful Shutdown
+const { setupGracefulShutdown } = require('./utils/fixTemplates');
+setupGracefulShutdown(server, [
+    async () => {
+        console.log('Closing database connections...');
+        await db.close();
+    }
+]);
+
+// Performance monitoring endpoint
+app.post('/api/performance', (req, res) => {
+    try {
+        const metrics = req.body;
+        console.log('Performance Metrics Received:', metrics);
+        // In production, send to analytics service
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Error logging endpoint
+app.post('/api/log-error', (req, res) => {
+    try {
+        const errorData = req.body;
+        console.error('Frontend Error:', errorData);
+        // In production, send to error tracking service (Sentry)
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Use error handling middleware as the last middleware
+app.use(errorHandler.errorMiddleware());
+
+module.exports = { app, server };
 
 // Graceful shutdown
 process.on('SIGINT', () => {
