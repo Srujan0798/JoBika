@@ -111,6 +111,7 @@ git push origin master
 
 **Your frontend URL:** `https://jobika.vercel.app`
 
+
 ---
 
 ## ✅ **STEP 4: UPDATE CORS (2 min)**
