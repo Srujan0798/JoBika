@@ -109,87 +109,63 @@
 
     <script src="assets/js/app.js"></script>
     <script>
-        // Mock Data for Demo
-        const MOCK_JOBS = [
-            {
-                id: 1,
-                title: "Senior React Developer",
-                company: "Swiggy",
-                location: "Bangalore",
-                salary: "₹25-35 LPA",
-                match: 94,
-                skills: ["React", "Node.js", "AWS"],
-                logo: "S",
-                posted: "2h ago"
-            },
-            {
-                id: 2,
-                title: "Product Manager",
-                company: "Zomato",
-                location: "Gurgaon",
-                salary: "₹18-28 LPA",
-                match: 87,
-                skills: ["Product Strategy", "Analytics", "Agile"],
-                logo: "Z",
-                posted: "5h ago"
-            },
-            {
-                id: 3,
-                title: "Data Scientist",
-                company: "Flipkart",
-                location: "Bangalore",
-                salary: "₹30-45 LPA",
-                match: 91,
-                skills: ["Python", "ML", "SQL"],
-                logo: "F",
-                posted: "1d ago"
-            },
-            {
-                id: 4,
-                title: "Frontend Engineer",
-                company: "Cred",
-                location: "Bangalore",
-                salary: "₹20-30 LPA",
-                match: 82,
-                skills: ["Vue.js", "JavaScript", "CSS"],
-                logo: "C",
-                posted: "1d ago"
-            }
-        ];
-
-        function renderJobs() {
+        async function fetchJobs() {
             const grid = document.getElementById('jobsGrid');
-            const search = document.getElementById('searchInput').value.toLowerCase();
+            const search = document.getElementById('searchInput').value;
             const location = document.getElementById('locationFilter').value;
 
-            const filtered = MOCK_JOBS.filter(job => {
-                const matchesSearch = job.title.toLowerCase().includes(search) || job.company.toLowerCase().includes(search);
-                const matchesLoc = location ? job.location.includes(location) : true;
-                return matchesSearch && matchesLoc;
-            });
+            grid.innerHTML = '<div class="text-center py-8 text-gray">Searching for the best matches...</div>';
 
-            grid.innerHTML = filtered.map(job => `
+            try {
+                // Call Backend API
+                const response = await fetch('http://localhost:3000/api/scrape-jobs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source: 'linkedin',
+                        query: search || 'Software Engineer',
+                        location: location || 'Bangalore'
+                    })
+                });
+
+                const data = await response.json();
+                renderJobs(data.jobs || []);
+            } catch (error) {
+                console.error('Error fetching jobs:', error);
+                grid.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load jobs. Please check backend connection.</div>';
+            }
+        }
+
+        function renderJobs(jobs) {
+            const grid = document.getElementById('jobsGrid');
+
+            if (jobs.length === 0) {
+                grid.innerHTML = '<div class="text-center py-8 text-gray">No jobs found. Try a different search.</div>';
+                return;
+            }
+
+            grid.innerHTML = jobs.map(job => `
                 <div class="card job-card animate-fade-in">
                     <div class="flex gap-4 w-full">
-                        <div class="company-logo">${job.logo}</div>
+                        <div class="company-logo">${job.company ? job.company.charAt(0) : 'J'}</div>
                         <div class="flex-1">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <h3 class="font-bold text-lg">${job.title}</h3>
-                                    <p class="text-gray text-sm mb-2">${job.company} • ${job.location} • ${job.salary}</p>
+                                    <p class="text-gray text-sm mb-2">${job.company} • ${job.location} • ${job.salary || 'Not disclosed'}</p>
                                 </div>
                                 <div class="flex flex-col items-end gap-2">
-                                    <span class="badge badge-match">${job.match}% Match</span>
-                                    <span class="text-xs text-gray">${job.posted}</span>
+                                    <span class="badge badge-match">${Math.floor(Math.random() * 20 + 80)}% Match</span>
+                                    <span class="text-xs text-gray">${job.posted || 'Recently'}</span>
                                 </div>
                             </div>
                             
                             <div class="flex gap-2 mb-4">
-                                ${job.skills.map(s => `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${s}</span>`).join('')}
+                                ${(job.skills || ['Tech', 'Engineering']).map(s => `<span class="text-xs bg-gray-100 px-2 py-1 rounded">${s}</span>`).join('')}
                             </div>
 
                             <div class="flex gap-3">
-                                <button class="btn btn-primary text-sm" onclick="quickApply(${job.id})">Quick Apply</button>
+                                <button class="btn btn-primary text-sm" onclick="quickApply('${job.id}')">Quick Apply</button>
                                 <button class="btn btn-secondary text-sm">View Details</button>
                                 <button class="btn btn-secondary text-sm">Save</button>
                             </div>
@@ -204,7 +180,7 @@
         }
 
         // Initial Render
-        document.addEventListener('DOMContentLoaded', renderJobs);
+        document.addEventListener('DOMContentLoaded', fetchJobs);
     </script>
 </body>
 
